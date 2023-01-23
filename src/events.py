@@ -1,45 +1,30 @@
 import asyncio
 import logging
-from abc import abstractmethod
 from asyncio import sleep
 from typing import Type
 
-from vk_api.longpoll import VkEventType, Event
+from vk_api.longpoll import Event
 
-from .models import *
-from .vk import Vk
+from .api import Vk
+from .base_handler import Handler
+from .models import Mode
+from .modes import *
 from .poll import PollSession, PollHandler
-
-
-class Handler:
-    def __init__(self, vk: Vk):
-        self.vk = vk
-
-    @abstractmethod
-    async def process(self, event: Event, session: PollSession) -> None:
-        pass
-
-
-class EchoModeHandler(Handler):
-    async def process(self, event: Event, session: PollSession):
-        await self.vk.set_typing_activity(event.user_id)
-        message = f'echo {event.text.lower()}, {session.user_info.first_name}'
-        self.vk.send_from_bot(event.user_id, message)
 
 
 class EventsHandler:
     MODES: dict[Mode, Type[Handler]] = {
         Mode.ECHO: EchoModeHandler,
+        Mode.SWAN: SwanModeHandler,
     }
 
     def __init__(self, vk: Vk, poll: PollHandler, mode: Mode = Mode.ECHO):
         self.vk = vk
         self.poll = poll
-        self.mode = mode
-        self.handler: Handler = self.MODES[mode](vk)
+        self.handler = self.MODES[mode](vk)
 
     async def process_event(self, event: Event, session: PollSession):
-        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+        if self.vk.is_event_need_response(event):
             message = event.text.lower()
             logging.info(f'New message: {message}')
             await self.handler.process(event, session)

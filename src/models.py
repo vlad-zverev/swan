@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 from typing import NamedTuple
 
 
@@ -21,13 +21,14 @@ class VkUserSex(IntEnum):
 
 
 class VkUserInfo(NamedTuple):
+    id: int
     first_name: str
     city: str
     sex: VkUserSex
     birth_year: int
 
 
-class Mode(IntEnum):
-    ECHO = 1
-    SWAN = 2
-    HUMOR = 3
+class Mode(Enum):
+    ECHO = 'ECHO'
+    SWAN = 'SWAN'
+    HUMOR = 'HUMOR'

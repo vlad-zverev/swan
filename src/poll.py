@@ -1,21 +1,19 @@
 import logging
 from queue import Queue, Empty
-from threading import Lock
-from threading import Thread
+from threading import Thread, Lock
 from typing import Optional
 
-from vk_api.longpoll import Event
-from vk_api.longpoll import VkLongPoll, VkEventType
+from vk_api.longpoll import Event, VkLongPoll, VkEventType
 from vk_api.vk_api import VkApiMethod
 
+from .api import Vk
 from .models import *
-from .vk import Vk
 
 
 class PollSession:
-    def __init__(self, api: VkApiMethod, user_info: VkUserInfo, event: Event):
+    def __init__(self, api: VkApiMethod, user: VkUserInfo, event: Event):
         self.api = api
-        self.user_info = user_info
+        self.user = user
         self._lock = Lock()
         self.events = Queue()
         self.add_event(event)

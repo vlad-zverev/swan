@@ -15,5 +15,5 @@ vk = Vk()
 poll = PollHandler(vk)
 poll.run()
 
-events = EventsHandler(vk, poll, Mode.ECHO)
+events = EventsHandler(vk, poll, Mode.SWAN)
 events.run()
