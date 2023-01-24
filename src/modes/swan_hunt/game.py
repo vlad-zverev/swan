@@ -220,7 +220,7 @@ class Okhota:
         self.kills_counter = 0
         self.year = datetime.now().year
         self.started = False
-        self.difficulty = 'солдат'
+        self.difficulty = random.choice(list(self.DIFFICULTIES.keys()))
 
     def send(self, event: str):
         self.messages.append(event)
@@ -251,10 +251,11 @@ class Okhota:
             'лечить': hunter.est_tabletku,
             'наложить на себя руки': hunter.suicide,
             'тренить + лечить': self.train_and_cure,
-            'го': self.start_game,
+            'here we go': self.start_game,
         }.get(decision, self.wrong_command)()
 
-    def start_game(self):
+    @staticmethod
+    def start_game():
         logging.info('Стартуем...')
 
     def train_and_cure(self):
@@ -288,8 +289,8 @@ class Okhota:
             hunter.age += 1
 
     @staticmethod
-    def get_keyboard(hunter: Hunter):
-        keyboard = VkKeyboard(one_time=False)
+    def get_keyboard(hunter: Hunter) -> dict:
+        keyboard = VkKeyboard(one_time=True)
         if hunter.alive:
             themes = ['тренить', 'лечить']
             for theme in themes:
@@ -299,11 +300,11 @@ class Okhota:
             keyboard.add_line()
             keyboard.add_button('наложить на себя руки', Color.SECONDARY)
         else:
-            keyboard.add_button('го', Color.PRIMARY)
+            keyboard.add_button('here we go', Color.PRIMARY)
         return keyboard.get_keyboard()
 
-    def initial_keyboard(self):
-        keyboard = VkKeyboard(one_time=False)
+    def initial_keyboard(self) -> dict:
+        keyboard = VkKeyboard(one_time=True)
         for level, color in self.DIFFICULTIES.items():
             keyboard.add_button(level, color)
         return keyboard.get_keyboard()

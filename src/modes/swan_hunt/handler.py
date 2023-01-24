@@ -46,9 +46,11 @@ class SwanModeHandler(Handler):
         await self.here_we_go(event, okhota, hunter)
 
     async def post_round(self, okhota: Okhota, hunter: Hunter, event: Event):
-        for message in okhota.messages:
+        count = len(okhota.messages)
+        for index, message in enumerate(okhota.messages):
             await self.vk.set_typing_activity(user_id=event.user_id, timeout=.5)
-            self.vk.send_from_bot(user_id=event.user_id, message=message, keyboard=okhota.get_keyboard(hunter))
+            keyboard = okhota.get_keyboard(hunter) if count - index == 1 else None
+            self.vk.send_from_bot(user_id=event.user_id, message=message, keyboard=keyboard)
         okhota.messages.clear()
         if not hunter.alive:
             del self.games[event.user_id]
