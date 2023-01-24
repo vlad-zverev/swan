@@ -52,7 +52,7 @@ class Vk:
             user_id=user_id,
             type='typing'
         )
-        logging.info('Bot typing...')
+        logging.debug('Bot typing...')
         await sleep(timeout)
 
     def send_from_bot(self, user_id: int, message: str, keyboard: Optional[dict] = None):

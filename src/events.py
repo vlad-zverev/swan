@@ -44,5 +44,5 @@ class EventsHandler:
         try:
             asyncio.run(self.handle_events())
         except asyncio.exceptions.CancelledError:
-            logging.info('Successfully stopped')
+            logging.info('Successfully stopped handling events')
         exit(0)

@@ -1,1 +1,1 @@
-from .game import SwanModeHandler
+from .handler import SwanModeHandler
