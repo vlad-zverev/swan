@@ -263,7 +263,6 @@ class Okhota:
 
     def wrong_command(self):
         pass
-        # self.send('ты упустил шанс и ничего не прокачал, жми кнопки в след раз.........')
 
     def hunt(self, hunter: Hunter):
         zhertva = Zhertva(self.difficulty)
