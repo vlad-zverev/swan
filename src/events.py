@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from asyncio import sleep
 from typing import Type
 
 from vk_api.longpoll import Event
@@ -32,13 +31,12 @@ class EventsHandler:
     async def handle_events(self):
         logging.info('Start handling events...')
         while True:
-            tasks = []
-            for _, session in self.poll.sessions.items():
-                event = session.last_event()
-                if event:
-                    tasks.append(asyncio.ensure_future(self.process_event(event, session)))
-            tasks.append(asyncio.ensure_future(sleep(.1)))
-            await asyncio.gather(*tasks)
+            with self.poll.condition:
+                while self.poll.events.empty():
+                    self.poll.condition.wait()
+                event = self.poll.last_event()
+                session = self.poll.sessions[event.user_id]
+                await self.process_event(event, session)
 
     def run(self):
         try:

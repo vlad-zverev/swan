@@ -1,33 +1,17 @@
 import logging
 from queue import Queue, Empty
-from threading import Thread, Lock
+from threading import Thread, Lock, Condition
 from typing import Optional
 
 from vk_api.longpoll import Event, VkLongPoll, VkEventType
-from vk_api.vk_api import VkApiMethod
 
 from .api import Vk
 from .models import *
 
 
 class PollSession:
-    def __init__(self, api: VkApiMethod, user: VkUserInfo, event: Event):
-        self.api = api
+    def __init__(self, user: VkUserInfo):
         self.user = user
-        self._lock = Lock()
-        self.events = Queue()
-        self.add_event(event)
-
-    def add_event(self, event: Event) -> None:
-        with self._lock:
-            self.events.put(event)
-
-    def last_event(self) -> Optional[Event]:
-        try:
-            with self._lock:
-                return self.events.get_nowait()
-        except Empty:
-            return
 
 
 class PollHandler:
@@ -36,8 +20,23 @@ class PollHandler:
         self.long_poll = VkLongPoll(vk.bot)
         self.skip_events = [VkEventType.MESSAGES_COUNTER_UPDATE]
         self.poll_thread: Optional[Thread] = None
-        self._sessions: dict[int, PollSession] = {}
+        self.events = Queue()
         self.lock = Lock()
+        self.condition = Condition()
+        self._sessions: dict[int, PollSession] = {}
+
+    def add_event(self, event: Event) -> None:
+        with self.lock:
+            self.events.put(event)
+        with self.condition:
+            self.condition.notify_all()
+
+    def last_event(self) -> Optional[Event]:
+        try:
+            with self.lock:
+                return self.events.get_nowait()
+        except Empty:
+            return
 
     @property
     def sessions(self):
@@ -55,12 +54,12 @@ class PollHandler:
             if not user_info:
                 logging.error(f"Can't register event without user info: {event}")
                 return
-            session = PollSession(self.vk.api, user_info, event)
+            session = PollSession(user_info)
             with self.lock:
                 self._sessions[user_id] = session
         else:
             session = self.sessions[user_id]
-            session.add_event(event)
+            self.add_event(event)
         return session
 
     def poll(self):
