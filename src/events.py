@@ -34,9 +34,12 @@ class EventsHandler:
             with self.poll.condition:
                 while self.poll.events.empty():
                     self.poll.condition.wait()
+            tasks = []
+            while not self.poll.events.empty():
                 event = self.poll.last_event()
                 session = self.poll.sessions[event.user_id]
-                await self.process_event(event, session)
+                tasks.append(asyncio.ensure_future(self.process_event(event, session)))
+            await asyncio.gather(*tasks)
 
     def run(self):
         try:
