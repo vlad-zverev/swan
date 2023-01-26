@@ -1,11 +1,49 @@
-import random
-from datetime import datetime
 import logging
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor as Color
+import random
+from asyncio import sleep
+from datetime import datetime
+
+from vkbottle.bot import Bot, Message
+from vkbottle_types.objects import UsersUserFull
+
+from .consts import *
+from .keyboards import *
 
 
-class Character:
-    alive: bool = True
+class GameProcessor:
+    def __init__(self, bot: Bot):
+        self.bot = bot
+        self.sessions: dict[int, tuple[Okhota, Hunter]] = {}
+
+    async def process(self, user_info: UsersUserFull, message: Message):
+        if user_info.id not in self.sessions:
+            okhota = Okhota()
+            hunter = Hunter(
+                okhota=okhota,
+                user_id=user_info.id,
+                name=user_info.first_name,
+                birth_year=int(user_info.bdate[-4:]) if user_info.bdate else 2000,
+                city=user_info.city.title,
+            )
+            self.sessions[user_info.id] = okhota, hunter
+        else:
+            okhota, hunter = self.sessions[user_info.id]
+        await self.here_we_go(message, okhota, hunter)
+
+    async def here_we_go(self, message: Message, okhota: 'Okhota', hunter: 'Hunter'):
+        okhota.na_lebedei_till_death_once_a_year(hunter, decision=message.text)
+        await self.post_round(message, okhota, hunter)
+
+    async def post_round(self, message: Message, okhota: 'Okhota', hunter: 'Hunter'):
+        count = len(okhota.messages)
+        for index, text in enumerate(okhota.messages):
+            keyboard = SWAN_GAME_KEYBOARD if count - index == 1 and hunter.alive else None
+            await sleep(.5)
+            await message.answer(text, keyboard=keyboard)
+        okhota.messages.clear()
+        if not hunter.alive:
+            del self.sessions[message.from_id]
+            self.bot.state_dispenser.delete(message.from_id)
 
 
 class Points(int):
@@ -24,46 +62,7 @@ class Points(int):
         return self._trim_by_limits(res)
 
 
-class DifficultyRanges:
-    sheinaya_prochnost = {
-        'салага': (3, 4),
-        'солдат': (4, 5),
-        'боец': (5, 6),
-        'легенда': (7, 10),
-    }
-    sila_klyuva = {
-        'салага': (7, 9),
-        'солдат': (9, 12),
-        'боец': (10, 14),
-        'легенда': (12, 15),
-    }
-    trenirovka = {
-        'салага': (7, 9),
-        'солдат': (5, 8),
-        'боец': (5, 7),
-        'легенда': (3, 5),
-    }
-    power_of_peel = {
-        'салага': (6, 10),
-        'солдат': (5, 9),
-        'боец': (4, 8),
-        'легенда': (3, 7),
-    }
-    fight_skill_loss = {
-        'салага': (1, 2),
-        'солдат': (1, 2),
-        'боец': (1, 3),
-        'легенда': (2, 3),
-    }
-    fight_skill_improve = {
-        'салага': (2, 4),
-        'солдат': (1, 3),
-        'боец': (1, 2),
-        'легенда': (1, 2),
-    }
-
-
-class Zhertva(Character):
+class Zhertva:
     NAMES = ['Лёня', 'Витя', 'Игорь', 'Вова', 'Гена', 'Илья']
 
     def __init__(self, difficulty: str):
@@ -71,12 +70,13 @@ class Zhertva(Character):
         self.sheinaya_prochnost = random.randint(*DifficultyRanges.sheinaya_prochnost[difficulty])
         self.sila_klyuva = random.randint(*DifficultyRanges.sila_klyuva[difficulty])
         self.prozharena = Points(0)
+        self.alive: bool = True
 
     def __str__(self):
         return f'лебедь {self.name}'
 
 
-class Hunter(Character):
+class Hunter:
     NATURAL_CAUSES_OF_DEATH = ['инсульт', 'рак', 'инфаркт']
     ANATOMY_PART_OF_BODY = ['жопы', 'мозга']
     SUICIDE_METHODS = ['повешенья', 'утопления', 'прыжка с крыши', 'выстрела в висок']
@@ -112,6 +112,7 @@ class Hunter(Character):
 
         self.health_points = Points(100)
         self.dushitelnyi_skill = Points(1)
+        self.alive: bool = True
 
     def __str__(self):
         return f'{self.name}'
@@ -209,18 +210,12 @@ class Hunter(Character):
 
 class Okhota:
     messages: list[str] = []
-    DIFFICULTIES = {
-        'салага': Color.SECONDARY,
-        'солдат': Color.PRIMARY,
-        'боец': Color.POSITIVE,
-        'легенда': Color.NEGATIVE,
-    }
 
-    def __init__(self):
+    def __init__(self, difficulty: str = None):
         self.kills_counter = 0
         self.year = datetime.now().year
         self.started = False
-        self.difficulty = random.choice(list(self.DIFFICULTIES.keys()))
+        self.difficulty = difficulty or random.choice(DIFFICULTIES)
 
     def send(self, event: str):
         self.messages.append(event)
@@ -286,24 +281,3 @@ class Okhota:
             )
             self.year += 1
             hunter.age += 1
-
-    @staticmethod
-    def get_keyboard(hunter: Hunter) -> dict:
-        keyboard = VkKeyboard(one_time=True)
-        if hunter.alive:
-            themes = ['тренить', 'лечить']
-            for theme in themes:
-                keyboard.add_button(theme, Color.PRIMARY)
-            keyboard.add_line()
-            keyboard.add_button(' + '.join(themes), Color.POSITIVE)
-            keyboard.add_line()
-            keyboard.add_button('наложить на себя руки', Color.SECONDARY)
-        else:
-            keyboard.add_button('here we go', Color.PRIMARY)
-        return keyboard.get_keyboard()
-
-    def initial_keyboard(self) -> dict:
-        keyboard = VkKeyboard(one_time=True)
-        for level, color in self.DIFFICULTIES.items():
-            keyboard.add_button(level, color)
-        return keyboard.get_keyboard()

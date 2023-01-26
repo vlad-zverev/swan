@@ -1,19 +1,13 @@
 import logging
+import os
 import sys
-from os import getenv
-
-from src import Vk, PollHandler, EventsHandler, Mode
 
 logging.basicConfig(
-    level=getenv('LOG_LEVEL', 'INFO'),
+    level=os.environ.get('LOG_LEVEL', 'DEBUG'),
     format='%(asctime)s %(levelname)s (%(levelno)s) %(message)s',
     stream=sys.stdout,
 )
 
-vk = Vk()
+from src import bot
 
-poll = PollHandler(vk)
-poll.run()
-
-events = EventsHandler(vk, poll, Mode.SWAN)
-events.run()
+bot.run_forever()

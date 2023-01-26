@@ -1,4 +1,5 @@
-from .api import Vk
-from .events import EventsHandler
-from .models import Mode
-from .poll import PollHandler
+from . import globals, game, handlers, keyboards, middlewares
+
+bot = globals.bot
+
+__all__ = ('bot', )
